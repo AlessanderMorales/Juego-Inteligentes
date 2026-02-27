@@ -59,6 +59,10 @@ class GranjaBFS:
         self.reloj = pygame.time.Clock()
         self.id_mision = "1"
         self.modo_ia = False
+        
+        self.img_pastor = pygame.transform.scale(pygame.image.load("pastor.png").convert_alpha(), (45, 45))
+        self.img_oveja = pygame.transform.scale(pygame.image.load("oveja.png").convert_alpha(), (45, 45))
+        
         self.crear_mapa()
 
     def crear_mapa(self):
@@ -128,11 +132,11 @@ class GranjaBFS:
             pygame.draw.polygon(self.pantalla, COLOR_BORDE, puntos, 1)
 
             if coords == tuple(self.pos_granjero):
-                pygame.draw.circle(self.pantalla, (255, 215, 0), centro, 15)
-                pygame.draw.circle(self.pantalla, (50, 100, 255), centro, 10)
+                rect = self.img_pastor.get_rect(center=centro)
+                self.pantalla.blit(self.img_pastor, rect)
             elif h.tipo == "meta":
-                pygame.draw.circle(self.pantalla, MISIONES[self.id_mision]["color"], centro, 18)
-                pygame.draw.circle(self.pantalla, (255,255,255), centro, 18, 3)
+                rect = self.img_oveja.get_rect(center=centro)
+                self.pantalla.blit(self.img_oveja, rect)
 
         pygame.draw.rect(self.pantalla, (40, 40, 40), (820, 0, 280, ALTO))
         y = 40
