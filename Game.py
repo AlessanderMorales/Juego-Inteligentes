@@ -3,51 +3,9 @@ import math
 import random
 from collections import deque
 
-ANCHO, ALTO = 1100, 750
-RADIO_HEX = 32
-FPS = 60
-
-COLOR_PASTO = (34, 139, 34)
-COLOR_TIERRA = (139, 69, 19)
-COLOR_AGUA = (30, 144, 255)
-COLOR_CAMINO = (240, 230, 140)
-COLOR_TEXTO = (255, 255, 255)
-COLOR_BORDE = (20, 100, 20)
-
-MISIONES = {
-    "1": {"nombre": "Ir al Establo",    "color": (200, 50, 50),  "meta_pos": (5, -5)},
-    "2": {"nombre": "Buscar el Pozo",   "color": (50, 50, 200),  "meta_pos": (0, 5)},
-    "3": {"nombre": "Llegar al Huerto", "color": (50, 200, 50),  "meta_pos": (-5, 5)},
-    "4": {"nombre": "Ver las Ovejas",   "color": (230, 230, 230),"meta_pos": (5, 0)},
-    "5": {"nombre": "Ir al Molino",     "color": (150, 75, 0),   "meta_pos": (-5, 0)}
-}
-
-def hex_a_pixel(q, r, radio):
-    x = radio * (3/2 * q)
-    y = radio * (math.sqrt(3)/2 * q + math.sqrt(3) * r)
-    return (int(x + 450), int(y + ALTO/2))
-
-def pixel_a_hex(x, y, radio):
-    x, y = x - 450, y - ALTO/2
-    q = (2/3 * x) / radio
-    r = (-1/3 * x + math.sqrt(3)/3 * y) / radio
-    return hex_round(q, r)
-
-def hex_round(q, r):
-    s = -q - r
-    rq, rr, rs = round(q), round(r), round(s)
-    dq, dr, ds = abs(rq - q), abs(rr - r), abs(rs - s)
-    if dq > dr and dq > ds: rq = -rr - rs
-    elif dr > ds: rr = -rq - rs
-    return rq, rr
-
-class Hexagono:
-    def __init__(self, q, r):
-        self.q, self.r = q, r
-        self.tipo = "pasto"
-        self.visitado = False
-        self.padre = None
-        self.en_camino = False
+from config import *
+from utils import hex_a_pixel, pixel_a_hex
+from hexagon import Hexagono
 
 class GranjaBFS:
     def __init__(self):
