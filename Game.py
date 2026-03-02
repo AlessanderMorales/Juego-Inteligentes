@@ -20,6 +20,8 @@ class GranjaBFS:
         
         self.img_pastor = pygame.transform.scale(pygame.image.load("pastor.png").convert_alpha(), (45, 45))
         self.img_oveja = pygame.transform.scale(pygame.image.load("oveja.png").convert_alpha(), (45, 45))
+        self.img_montana = pygame.transform.scale(pygame.image.load("montana.png").convert_alpha(), (int(RADIO_HEX*1.8), int(RADIO_HEX*1.8)))
+        self.img_pasto = pygame.transform.scale(pygame.image.load("pasto.png").convert_alpha(), (int(RADIO_HEX*1.8), int(RADIO_HEX*1.8)))
         
         self.crear_mapa()
 
@@ -79,14 +81,22 @@ class GranjaBFS:
         self.pantalla.fill((20, 50, 20))
         for coords, h in self.tablero.items():
             centro = hex_a_pixel(coords[0], coords[1], RADIO_HEX)
-            color = COLOR_PASTO
-            if h.tipo == "obstaculo": color = (100, 80, 60)
-            if h.visitado and self.modo_ia: color = (60, 170, 60)
-            if h.en_camino and self.modo_ia: color = COLOR_CAMINO
+            
+            if h.tipo == "obstaculo":
+                rect = self.img_montana.get_rect(center=centro)
+                self.pantalla.blit(self.img_montana, rect)
+            else:
+                rect = self.img_pasto.get_rect(center=centro)
+                self.pantalla.blit(self.img_pasto, rect)
             
             puntos = [ (centro[0] + RADIO_HEX*0.9*math.cos(math.radians(60*i-30)),
                         centro[1] + RADIO_HEX*0.9*math.sin(math.radians(60*i-30))) for i in range(6)]
-            pygame.draw.polygon(self.pantalla, color, puntos)
+            
+            if h.en_camino and self.modo_ia:
+                pygame.draw.polygon(self.pantalla, COLOR_CAMINO, puntos, 5)
+            elif h.visitado and self.modo_ia:
+                pygame.draw.polygon(self.pantalla, (60, 170, 60), puntos, 3)
+                
             pygame.draw.polygon(self.pantalla, COLOR_BORDE, puntos, 1)
 
             if coords == tuple(self.pos_granjero):
