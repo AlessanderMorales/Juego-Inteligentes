@@ -6,6 +6,9 @@ import heapq
 from config import *
 from utils import hex_a_pixel, pixel_a_hex
 from hexagon import Hexagono
+from dijkstra import DijkstraIA
+from dfs_search import DFSIA
+from uniform_cost import UniformCostIA
 
 class GranjaBFS:
     def __init__(self):
@@ -17,6 +20,9 @@ class GranjaBFS:
         self.reloj = pygame.time.Clock()
         self.id_mision = "1"
         self.modo_ia = False
+        self.tipos_ia = ["Dijkstra", "DFS", "UCS"]
+        self.tipo_ia_idx = 0
+        self.tipo_ia = self.tipos_ia[self.tipo_ia_idx]
         
         self.img_pastor = pygame.transform.scale(pygame.image.load("pastor.png").convert_alpha(), (45, 45))
         self.img_oveja = pygame.transform.scale(pygame.image.load("oveja.png").convert_alpha(), (45, 45))
@@ -46,42 +52,12 @@ class GranjaBFS:
         self.reset_ia()
 
     def reset_ia(self):
-        for h in self.tablero.values():
-            h.visitado = h.en_camino = False
-            h.padre = None
-            h.costo = float('inf')
-        
-        start = tuple(self.pos_granjero)
-        self.tablero[start].visitado = True
-        self.tablero[start].costo = 0
-        self.frontera = [(0, start)]
-        self.ia_completa = False
-
-    def bfs_step(self):
-        if self.frontera and not self.ia_completa:
-            costo_actual, curr = heapq.heappop(self.frontera)
-            if curr == self.meta:
-                self.ia_completa = True
-                self.marcar_camino()
-                return
-            for dq, dr in [(1,0),(1,-1),(0,-1),(-1,0),(-1,1),(0,1)]:
-                vec = (curr[0]+dq, curr[1]+dr)
-                if vec in self.tablero:
-                    h_vec = self.tablero[vec]
-                    if h_vec.tipo != "obstaculo":
-                        costo_paso = 3 if h_vec.tipo == "barro" else 1
-                        nuevo_costo = costo_actual + costo_paso
-                        if nuevo_costo < h_vec.costo:
-                            h_vec.costo = nuevo_costo
-                            h_vec.padre = curr
-                            h_vec.visitado = True
-                            heapq.heappush(self.frontera, (nuevo_costo, vec))
-
-    def marcar_camino(self):
-        p = self.meta
-        while p in self.tablero and self.tablero[p].padre:
-            self.tablero[p].en_camino = True
-            p = self.tablero[p].padre
+        if self.tipo_ia == "Dijkstra":
+            self.ia = DijkstraIA(self.tablero, self.pos_granjero, self.meta)
+        elif self.tipo_ia == "DFS":
+            self.ia = DFSIA(self.tablero, self.pos_granjero, self.meta)
+        elif self.tipo_ia == "UCS":
+            self.ia = UniformCostIA(self.tablero, self.pos_granjero, self.meta)
 
     def mover_granjero(self, destino):
         q, r = self.pos_granjero
@@ -135,8 +111,10 @@ class GranjaBFS:
         self.pantalla.blit(self.fuente_m.render(mision["nombre"], True, (0,0,0) if self.id_mision=="4" else (255,255,255)), (850, y+10))
         y += 100
         instrucciones = [
-            "CLIC: Caminar",
-            "ESPACIO: Mostrar BFS",
+            f"CLIC: Caminar / IA Actual: {self.tipo_ia}",
+            "ESPACIO: Mostrar Dijkstra",
+            "D: Mostrar DFS",
+            "U: Mostrar UCS",
             "TECLAS 1-5: Cambiar Destino",
             "R: Nuevo Terreno",]
         for linea in instrucciones:
@@ -159,14 +137,23 @@ class GranjaBFS:
                     if m_hex in self.tablero: self.mover_granjero(m_hex)
                 if ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_SPACE: 
-                        self.modo_ia = not self.modo_ia
-                        if self.modo_ia: self.reset_ia()
+                        self.modo_ia = True
+                        self.tipo_ia = "Dijkstra"
+                        self.reset_ia()
+                    if ev.key == pygame.K_d:
+                        self.modo_ia = True
+                        self.tipo_ia = "DFS"
+                        self.reset_ia()
+                    if ev.key == pygame.K_u:
+                        self.modo_ia = True
+                        self.tipo_ia = "UCS"
+                        self.reset_ia()
                     if ev.key == pygame.K_r: self.crear_mapa()
                     if ev.unicode in MISIONES: 
                         self.id_mision = ev.unicode
                         self.crear_mapa()
-            if self.modo_ia and not self.ia_completa: 
-                self.bfs_step()
+            if self.modo_ia and not self.ia.ia_completa: 
+                self.ia.step()
                 pygame.time.delay(20)
             self.dibujar()
             pygame.display.flip()
