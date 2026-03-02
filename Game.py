@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from collections import deque
+import heapq
 
 from config import *
 from utils import hex_a_pixel, pixel_a_hex
@@ -22,6 +22,7 @@ class GranjaBFS:
         self.img_oveja = pygame.transform.scale(pygame.image.load("oveja.png").convert_alpha(), (45, 45))
         self.img_montana = pygame.transform.scale(pygame.image.load("montana.png").convert_alpha(), (int(RADIO_HEX*1.8), int(RADIO_HEX*1.8)))
         self.img_pasto = pygame.transform.scale(pygame.image.load("pasto.png").convert_alpha(), (int(RADIO_HEX*1.8), int(RADIO_HEX*1.8)))
+        self.img_barro = pygame.transform.scale(pygame.image.load("barro.png").convert_alpha(), (int(RADIO_HEX*1.8), int(RADIO_HEX*1.8)))
         
         self.crear_mapa()
 
@@ -31,10 +32,14 @@ class GranjaBFS:
         for q in range(-r_mapa, r_mapa + 1):
             for r in range(max(-r_mapa, -q-r_mapa), min(r_mapa, -q+r_mapa) + 1):
                 self.tablero[(q, r)] = Hexagono(q, r)
-                if random.random() < 0.18 and (q,r) != (0,0):
+                r_val = random.random()
+                if r_val < 0.18 and (q,r) != (0,0):
                     self.tablero[(q, r)].tipo = "obstaculo"
+                elif r_val < 0.30 and (q,r) != (0,0):
+                    self.tablero[(q, r)].tipo = "barro"
         
         self.pos_granjero = [0, 0]
+        self.tiempo = 15
         self.meta = MISIONES[self.id_mision]["meta_pos"]
         self.tablero[self.meta].tipo = "meta"
         self.ganado = False
@@ -44,24 +49,33 @@ class GranjaBFS:
         for h in self.tablero.values():
             h.visitado = h.en_camino = False
             h.padre = None
-        self.frontera = deque([tuple(self.pos_granjero)])
-        self.tablero[tuple(self.pos_granjero)].visitado = True
+            h.costo = float('inf')
+        
+        start = tuple(self.pos_granjero)
+        self.tablero[start].visitado = True
+        self.tablero[start].costo = 0
+        self.frontera = [(0, start)]
         self.ia_completa = False
 
     def bfs_step(self):
         if self.frontera and not self.ia_completa:
-            curr = self.frontera.popleft()
+            costo_actual, curr = heapq.heappop(self.frontera)
             if curr == self.meta:
                 self.ia_completa = True
                 self.marcar_camino()
                 return
             for dq, dr in [(1,0),(1,-1),(0,-1),(-1,0),(-1,1),(0,1)]:
                 vec = (curr[0]+dq, curr[1]+dr)
-                if vec in self.tablero and not self.tablero[vec].visitado:
-                    if self.tablero[vec].tipo != "obstaculo":
-                        self.tablero[vec].visitado = True
-                        self.tablero[vec].padre = curr
-                        self.frontera.append(vec)
+                if vec in self.tablero:
+                    h_vec = self.tablero[vec]
+                    if h_vec.tipo != "obstaculo":
+                        costo_paso = 3 if h_vec.tipo == "barro" else 1
+                        nuevo_costo = costo_actual + costo_paso
+                        if nuevo_costo < h_vec.costo:
+                            h_vec.costo = nuevo_costo
+                            h_vec.padre = curr
+                            h_vec.visitado = True
+                            heapq.heappush(self.frontera, (nuevo_costo, vec))
 
     def marcar_camino(self):
         p = self.meta
@@ -72,10 +86,13 @@ class GranjaBFS:
     def mover_granjero(self, destino):
         q, r = self.pos_granjero
         dist = (abs(q - destino[0]) + abs(q + r - destino[0] - destino[1]) + abs(r - destino[1])) / 2
-        if dist == 1 and self.tablero[destino].tipo != "obstaculo":
-            self.pos_granjero = list(destino)
-            if destino == self.meta: self.ganado = True
-            self.reset_ia()
+        if dist == 1 and self.tablero[destino].tipo != "obstaculo" and self.tiempo > 0 and not self.ganado:
+            costo = 3 if self.tablero[destino].tipo == "barro" else 1
+            if self.tiempo >= costo:
+                self.tiempo -= costo
+                self.pos_granjero = list(destino)
+                if destino == self.meta: self.ganado = True
+                self.reset_ia()
 
     def dibujar(self):
         self.pantalla.fill((20, 50, 20))
@@ -85,6 +102,9 @@ class GranjaBFS:
             if h.tipo == "obstaculo":
                 rect = self.img_montana.get_rect(center=centro)
                 self.pantalla.blit(self.img_montana, rect)
+            elif h.tipo == "barro":
+                rect = self.img_barro.get_rect(center=centro)
+                self.pantalla.blit(self.img_barro, rect)
             else:
                 rect = self.img_pasto.get_rect(center=centro)
                 self.pantalla.blit(self.img_pasto, rect)
@@ -122,8 +142,12 @@ class GranjaBFS:
         for linea in instrucciones:
             self.pantalla.blit(self.fuente_m.render(linea, True, (200, 200, 200)), (840, y))
             y += 30
+        self.pantalla.blit(self.fuente_l.render(f"Tiempo: {self.tiempo} min", True, (255, 200, 50)), (320, 60))
         if self.ganado:
             msg = self.fuente_l.render("¡MISIÓN CUMPLIDA!", True, (255, 255, 0))
+            self.pantalla.blit(msg, (320, 20))
+        elif self.tiempo <= 0:
+            msg = self.fuente_l.render("¡TIEMPO AGOTADO!", True, (255, 50, 50))
             self.pantalla.blit(msg, (320, 20))
 
     def run(self):

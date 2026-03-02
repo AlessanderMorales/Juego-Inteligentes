@@ -5,3 +5,4 @@ class Hexagono:
         self.visitado = False
         self.padre = None
         self.en_camino = False
+        self.costo = float('inf')
